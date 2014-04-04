@@ -34,6 +34,9 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func exitafter(minutes int) {
+	if minutes == 0 {
+		return
+	}
 	delay := fmt.Sprintf("%dm", minutes)
 	duration, _ := time.ParseDuration(delay)
 	<-time.After(duration)
