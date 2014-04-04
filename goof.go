@@ -24,13 +24,13 @@ type fileHandler struct {
 }
 
 func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	f.count = f.count - 1
-	if f.count == -1 {
-		log.Fatal("Finished serving. Server exiting.")
-	}
 	log.Println(f.filepath)
 	w.Header().Set("Content-Disposition", "attachment;filename=\""+path.Base(f.filepath)+"\"")
 	http.ServeFile(w, r, f.filepath)
+	f.count = f.count - 1
+	if f.count == 0 {
+		log.Fatal("Finished serving. Server exiting.")
+	}
 }
 
 func exitafter(minutes int) {
