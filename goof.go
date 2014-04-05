@@ -60,7 +60,7 @@ func serveFolder(root string, count, duration int, endpoint string) {
 		log.Fatal(err)
 	}
 	go exitafter(duration)
-	// log.Println("Serving", tarfile, "at", endpoint)
+	log.Println("Serving", tarfile, "at", endpoint)
 	serveFile(&fileHandler{tarfile, count}, endpoint)
 }
 
@@ -74,6 +74,7 @@ func newArchWriter(dirname string) (*tar.Writer, error) {
 }
 
 func archiveDir(root string) (string, error) {
+	log.Println("Creating archive of", root)
 	dir := filepath.Dir(root)
 	tw, err := newArchWriter(root)
 	if err != nil {
@@ -91,6 +92,7 @@ func archiveDir(root string) (string, error) {
 		return nil
 	})
 	tw.Close()
+	log.Println("Created", root+".tar")
 	return root + ".tar", nil
 }
 
@@ -106,7 +108,7 @@ func main() {
 	} else {
 		// is a file
 		go exitafter(*duration)
-		// log.Println("Serving", *root, "at", endpoint)
+		log.Println("Serving", *root, "at", endpoint)
 		serveFile(&fileHandler{*root, *count}, endpoint)
 	}
 }
