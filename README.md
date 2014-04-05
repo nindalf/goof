@@ -14,7 +14,7 @@ go get github.com/nindalf/goof
 go install 
 ```
 
-Or download from here for Linux and Mac
+Or download from here for [Linux](https://github.com/nindalf/goof/releases/download/v0.8/goof) and [Mac](https://github.com/nindalf/goof/releases/download/v0.8/goof-mac)
 
 Usage
 ---
