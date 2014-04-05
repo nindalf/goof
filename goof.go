@@ -1,32 +1,37 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
 var (
 	ip       = flag.String("i", "127.0.0.1", "The IP Address the server should run on")
 	port     = flag.Int("p", 8086, "The port on which the server listens")
-	filepath = flag.String("f", "", "The name of the file to be shared")
-	count    = flag.Int("c", 1, "The number of times the file should be shared")
+	root     = flag.String("f", "", "The name of the file/folder to be shared")
+	count    = flag.Int("c", 1, "The number of times the file/folder should be shared")
 	duration = flag.Int("t", 0, "Server timeout")
 )
 
 type fileHandler struct {
-	filepath string
-	count    int
+	root  string
+	count int
 }
 
 func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println(f.filepath)
-	w.Header().Set("Content-Disposition", "attachment;filename=\""+path.Base(f.filepath)+"\"")
-	http.ServeFile(w, r, f.filepath)
+	log.Println("Serving " + path.Base(f.root) + " to " + strings.Split(r.RemoteAddr, ":")[0])
+	w.Header().Set("Content-Disposition", "attachment;filename=\""+path.Base(f.root)+"\"")
+	http.ServeFile(w, r, f.root)
 	f.count = f.count - 1
 	if f.count == 0 {
 		log.Fatal("Finished serving. Server exiting.")
@@ -39,22 +44,69 @@ func exitafter(minutes int) {
 	}
 	delay := fmt.Sprintf("%dm", minutes)
 	duration, _ := time.ParseDuration(delay)
+	log.Println("Will exit automatically after", duration)
 	<-time.After(duration)
 	log.Fatal("Server timed out.")
 }
 
-func checkFile(filepath string) {
-	if fi, err := os.Stat(filepath); err != nil || fi.IsDir() == true {
-		log.Fatal("File does not exist")
+func serveFile(handler http.Handler, endpoint string) {
+	http.Handle("/", handler)
+	log.Fatal(http.ListenAndServe(endpoint, nil))
+}
+
+func serveFolder(root string, count, duration int, endpoint string) {
+	tarfile, err := archiveDir(root)
+	if err != nil {
+		log.Fatal(err)
 	}
+	go exitafter(duration)
+	// log.Println("Serving", tarfile, "at", endpoint)
+	serveFile(&fileHandler{tarfile, count}, endpoint)
+}
+
+func newArchWriter(dirname string) (*tar.Writer, error) {
+	w, err := os.Create(dirname + ".tar")
+	if err != nil {
+		return new(tar.Writer), err
+	}
+	cw := gzip.NewWriter(w)
+	return tar.NewWriter(cw), nil
+}
+
+func archiveDir(root string) (string, error) {
+	dir := filepath.Dir(root)
+	tw, err := newArchWriter(root)
+	if err != nil {
+		return "", err
+	}
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		header, _ := tar.FileInfoHeader(info, "")
+		header.Name = path[len(dir):]
+		tw.WriteHeader(header)
+		if info.IsDir() == false {
+			data, _ := ioutil.ReadFile(path)
+			tw.Write(data)
+			tw.Flush()
+		}
+		return nil
+	})
+	tw.Close()
+	return root + ".tar", nil
 }
 
 func main() {
 	flag.Parse()
-	go exitafter(*duration)
-	checkFile(*filepath)
-	handler := fileHandler{*filepath, *count}
 	endpoint := fmt.Sprintf("%s:%d", *ip, *port)
-	http.Handle("/", &handler)
-	log.Fatal(http.ListenAndServe(endpoint, nil))
+	fi, err := os.Stat(*root)
+	if err != nil {
+		log.Fatal("Path is invalid")
+	}
+	if fi.IsDir() == true {
+		serveFolder(*root, *count, *duration, endpoint)
+	} else {
+		// is a file
+		go exitafter(*duration)
+		// log.Println("Serving", *root, "at", endpoint)
+		serveFile(&fileHandler{*root, *count}, endpoint)
+	}
 }
