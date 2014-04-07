@@ -21,6 +21,7 @@ var (
 	root     = flag.String("f", "", "The name of the file/folder to be shared")
 	count    = flag.Int("c", 1, "The number of times the file/folder should be shared")
 	duration = flag.Int("t", 0, "Server timeout")
+	archive  = flag.Bool("a", false, "Whether the folder should be compressed before serving")
 )
 
 type fileHandler struct {
@@ -54,7 +55,7 @@ func serveFile(handler http.Handler, endpoint string) {
 	log.Fatal(http.ListenAndServe(endpoint, nil))
 }
 
-func serveFolder(root string, count, duration int, endpoint string) {
+func serveFolderArchive(root string, count, duration int, endpoint string) {
 	tarfile, err := archiveDir(root)
 	if err != nil {
 		log.Fatal(err)
@@ -96,6 +97,12 @@ func archiveDir(root string) (string, error) {
 	return root + ".tar", nil
 }
 
+func serveFolderInteractive(root string, duration int, endpoint string) {
+	log.Println("Serving", root, "at", endpoint)
+	exitafter(duration)
+	log.Fatal(http.ListenAndServe(endpoint, http.FileServer(http.Dir(root))))
+}
+
 func main() {
 	flag.Parse()
 	endpoint := fmt.Sprintf("%s:%d", *ip, *port)
@@ -104,7 +111,11 @@ func main() {
 		log.Fatal("Path is invalid")
 	}
 	if fi.IsDir() == true {
-		serveFolder(*root, *count, *duration, endpoint)
+		if *archive == false {
+			serveFolderInteractive(*root, *duration, endpoint)
+		} else {
+			serveFolderArchive(*root, *count, *duration, endpoint)
+		}
 	} else {
 		// is a file
 		go exitafter(*duration)
