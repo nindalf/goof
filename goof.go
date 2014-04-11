@@ -16,12 +16,13 @@ import (
 )
 
 var (
-	ip       = flag.String("i", "127.0.0.1", "The IP Address the server should run on")
+	ip       = flag.String("i", "", "The IP Address the server should run on")
 	port     = flag.Int("p", 8086, "The port on which the server listens")
 	root     = flag.String("f", "", "The name of the file/folder to be shared")
 	count    = flag.Int("c", 1, "The number of times the file/folder should be shared")
 	duration = flag.Int("t", 0, "Server timeout")
 	archive  = flag.Bool("a", false, "Whether the folder should be compressed before serving")
+	upload   = flag.Bool("u", false, "Serve a form that enables users to upload files.")
 )
 
 type fileHandler struct {
