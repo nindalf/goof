@@ -14,12 +14,12 @@ go get github.com/nindalf/goof
 go install 
 ```
 
-Or download from here for [Linux](https://github.com/nindalf/goof/releases/download/v0.8/goof) and [Mac](https://github.com/nindalf/goof/releases/download/v0.8/goof-mac)
+Or download from here for [Linux](https://github.com/nindalf/goof/releases/download/v0.9/goof) and [Mac](https://github.com/nindalf/goof/releases/download/v0.9/goof-mac)
 
 Usage
 ---
 
-To serve a file or folder once on 127.0.0.1:8086
+To serve a file or folder once
 
 `goof -f /path/to/file`
 
@@ -33,8 +33,8 @@ Additional options:
 
 * `t` - The time in minutes that the server runs before exiting. Optional, default is 0 (forever until parameter `c` is satisfied). 
 
-* `i` - The IP address on which the server should run. Optional, default is 127.0.0.1
+* `i` - The IP address on which the server should run. Optional, default is all available addresses.
 
 * `p` - The port on which the server should listen. Optional, default is 8086.
 
-* `a` - Indicates if the folder to be served is to be archived. Optional, default is false (not archived).
+* `a` - Indicates if the folder to be served is to be archived. Optional, default is false (not archived and served interactively).
