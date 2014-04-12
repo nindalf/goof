@@ -17,13 +17,15 @@ import (
 )
 
 var (
-	ip       = flag.String("i", "", "The IP Address the server should run on")
-	port     = flag.Int("p", 8086, "The port on which the server listens")
-	root     = flag.String("f", "", "The name of the file/folder to be shared")
-	count    = flag.Int("c", 1, "The number of times the file/folder should be shared")
-	duration = flag.Int("t", 0, "Server timeout")
-	archive  = flag.Bool("a", false, "Whether the folder should be compressed before serving")
-	upload   = flag.Bool("u", false, "Serve a form that enables users to upload files.")
+	ip             = flag.String("i", "", "The IP Address the server should run on")
+	port           = flag.Int("p", 8086, "The port on which the server listens")
+	root           = flag.String("f", "", "The name of the file/folder to be shared")
+	count          = flag.Int("c", 1, "The number of times the file/folder should be shared")
+	duration       = flag.Int("t", 0, "Server timeout")
+	archive        = flag.Bool("a", false, "Whether the folder should be compressed before serving")
+	upload         = flag.Bool("u", false, "Serve a form that enables users to upload files.")
+	uploadFileSize = 1000000 // max size of uploaded file in bytes
+	uploadFilePerm = 0644
 )
 
 type fileHandler struct {
@@ -60,6 +62,40 @@ func serveFolderInteractive(root string, duration int, endpoint string) {
 	log.Println("Serving", root, "at", externalEndpoints(endpoint))
 	exitAfter(duration)
 	log.Fatal(http.ListenAndServe(endpoint, http.FileServer(http.Dir(root))))
+}
+
+func uploadh(root string, duration int, endpoint string) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(uploadForm))
+	})
+	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseMultipartForm(int64(uploadFileSize))
+		var erro error
+		for _, file := range r.MultipartForm.File["file"] {
+			a, err := file.Open()
+			if err != nil {
+				erro = err
+				break
+			}
+			data, err := ioutil.ReadAll(a)
+			err = ioutil.WriteFile(path.Join(root, file.Filename), data, os.FileMode(uploadFilePerm))
+			if err != nil {
+				erro = err
+				break
+			}
+			log.Println("Received", file.Filename, "from", strings.Split(r.RemoteAddr, ":")[0])
+		}
+		if erro == nil {
+			w.Write([]byte("Success!"))
+		} else {
+			w.Write([]byte("Something went wrong. Could not complete upload"))
+			log.Println("An error occurred while uploading from ", strings.Split(r.RemoteAddr, ":")[0], "-", erro)
+		}
+	})
+	log.Println("Listening for file uploads at", externalEndpoints(endpoint))
+	log.Println("Will save to", root)
+	exitAfter(duration)
+	log.Fatal(http.ListenAndServe(endpoint, nil))
 }
 
 func exitAfter(minutes int) {
@@ -125,9 +161,19 @@ func main() {
 	flag.Parse()
 	endpoint := fmt.Sprintf("%s:%d", *ip, *port)
 	fi, err := os.Stat(*root)
+
+	if *upload == true {
+		upath := *root
+		if err != nil || fi.IsDir() == false {
+			upath, _ = os.Getwd()
+		}
+		uploadh(upath, *duration, endpoint)
+	}
+
 	if err != nil {
 		log.Fatal("Path is invalid")
 	}
+
 	if fi.IsDir() == true {
 		if *archive == false {
 			serveFolderInteractive(*root, *duration, endpoint)
