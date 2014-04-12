@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path"
@@ -40,19 +41,9 @@ func (f *fileHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func exitafter(minutes int) {
-	if minutes == 0 {
-		return
-	}
-	delay := fmt.Sprintf("%dm", minutes)
-	duration, _ := time.ParseDuration(delay)
-	log.Println("Will exit automatically after", duration)
-	<-time.After(duration)
-	log.Fatal("Server timed out.")
-}
-
-func serveFile(handler http.Handler, endpoint string) {
+func serveFile(handler *fileHandler, endpoint string) {
 	http.Handle("/", handler)
+	log.Println("Serving", handler.root, "at", externalEndpoints(endpoint))
 	log.Fatal(http.ListenAndServe(endpoint, nil))
 }
 
@@ -61,9 +52,25 @@ func serveFolderArchive(root string, count, duration int, endpoint string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go exitafter(duration)
-	log.Println("Serving", tarfile, "at", endpoint)
+	go exitAfter(duration)
 	serveFile(&fileHandler{tarfile, count}, endpoint)
+}
+
+func serveFolderInteractive(root string, duration int, endpoint string) {
+	log.Println("Serving", root, "at", externalEndpoints(endpoint))
+	exitAfter(duration)
+	log.Fatal(http.ListenAndServe(endpoint, http.FileServer(http.Dir(root))))
+}
+
+func exitAfter(minutes int) {
+	if minutes == 0 {
+		return
+	}
+	delay := fmt.Sprintf("%dm", minutes)
+	duration, _ := time.ParseDuration(delay)
+	log.Println("Will exit automatically after", duration)
+	<-time.After(duration)
+	log.Fatal("Server timed out.")
 }
 
 func newArchWriter(dirname string) (*tar.Writer, error) {
@@ -98,10 +105,20 @@ func archiveDir(root string) (string, error) {
 	return root + ".tar", nil
 }
 
-func serveFolderInteractive(root string, duration int, endpoint string) {
-	log.Println("Serving", root, "at", endpoint)
-	exitafter(duration)
-	log.Fatal(http.ListenAndServe(endpoint, http.FileServer(http.Dir(root))))
+func externalEndpoints(endpoint string) []string {
+	var ips []string
+	if strings.Index(endpoint, ":") != 0 {
+		return append(ips, "http://"+endpoint)
+	}
+	addrs, _ := net.InterfaceAddrs()
+	for _, addr := range addrs {
+		if strings.Index(addr.String(), ":") != -1 {
+			//ipv6 address
+			continue
+		}
+		ips = append(ips, "http://"+strings.Split(addr.String(), "/")[0]+endpoint)
+	}
+	return ips
 }
 
 func main() {
@@ -119,8 +136,7 @@ func main() {
 		}
 	} else {
 		// is a file
-		go exitafter(*duration)
-		log.Println("Serving", *root, "at", endpoint)
+		go exitAfter(*duration)
 		serveFile(&fileHandler{*root, *count}, endpoint)
 	}
 }
