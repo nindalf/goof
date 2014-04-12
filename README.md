@@ -16,10 +16,10 @@ go install
 
 Or download from here for [Linux](https://github.com/nindalf/goof/releases/download/v0.9/goof) and [Mac](https://github.com/nindalf/goof/releases/download/v0.9/goof-mac)
 
-Usage
+Using
 ---
 
-To serve a file or folder once
+#####To serve a file or folder once
 
 `goof -f /path/to/file`
 
@@ -38,3 +38,11 @@ Additional options:
 * `p` - The port on which the server should listen. Optional, default is 8086.
 
 * `a` - Indicates if the folder to be served is to be archived. Optional, default is false (not archived and served interactively).
+
+#####Uploads
+
+`goof -u`
+
+* `f` - Directory where the file should be saved. Optional, default is current working directory.
+
+* `t`, `i`, and `p` are the same. `c` and `a` do not apply.
