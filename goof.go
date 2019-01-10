@@ -16,6 +16,14 @@ import (
 	"time"
 )
 
+const uploadForm = "<html><body>" +
+	"<form action=\"/upload\" method=\"post\" enctype=\"multipart/form-data\">" +
+	"<input type=\"file\" name=\"file\"/>" +
+	"<br/><br/>" +
+	"<input type=\"submit\" />" +
+	"</form>" +
+	"</body></html>"
+
 var (
 	ip             = flag.String("i", "", "The IP Address the server should run on")
 	port           = flag.Int("p", 8086, "The port on which the server listens")
